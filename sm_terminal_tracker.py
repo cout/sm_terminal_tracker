@@ -12,6 +12,7 @@ import argparse
 import time
 import os.path
 import sys
+import curses
 
 layout = [
   [ 'charge', 'ice', 'wave', 'spazer', 'plasma' ],
@@ -24,17 +25,17 @@ class Timer(object):
   def __init__(self):
     pass
 
-  def render_timer(self, toilet, time, colors, prefix):
+  def render_timer(self, window, toilet, time, colors, prefix):
     lines = toilet.render(time)
     for idx, line in enumerate(lines):
       # color = text_colors[idx] or gradient_colors[-1]
       # color_pair = Curses.color_pair(color)
       # window.attron(color_pair) {
-      #   window << prefix << line
+      window.addstr(prefix)
+      window.addstr(line)
       # }
-      # window.clrtoeol()
-      # window << "\n"
-      print(line)
+      window.clrtoeol()
+      window.addstr("\n")
 
   def s_time(self, secs):
     h = '%d' % (secs // 3600)
@@ -43,10 +44,10 @@ class Timer(object):
     ff = '%02d' % ((secs * 100) // 1 % 100)
     return '%s:%s:%s.%s' % (h, mm, ss, ff)
 
-  def draw(self, state, toilet):
+  def draw(self, state, window, toilet):
     colors = None # TODO
-    self.render_timer(toilet, " IGT: " + self.s_time(state.igt.to_seconds()), colors, "  ")
-    self.render_timer(toilet, " RTA: " + self.s_time(state.rta.to_seconds()), colors, "")
+    self.render_timer(window, toilet, " IGT: " + self.s_time(state.igt.to_seconds()), colors, "  ")
+    self.render_timer(window, toilet, " RTA: " + self.s_time(state.rta.to_seconds()), colors, "")
 
 class Icon(object):
   def __init__(self, name):
@@ -56,7 +57,6 @@ class Icon(object):
       self.image = Image.open(self.filename).convert('RGBA')
       self.nimage = self.image.convert('LA').convert('RGBA')
     else:
-      print('%s does not exist' % self.filename)
       self.image = Image.new('RGBA', (32,32), (0, 0, 0, 0))
       self.nimage = Image.new('RGBA', (32,32), (0, 0, 0, 0))
 
@@ -77,12 +77,6 @@ class Grid(object):
     image_writer.write(image, file=sys.stdout)
     sys.stdout.flush()
 
-def need_redraw(last_state, state):
-  # TODO: bosses
-  return last_state is None or \
-         last_state.items != state.items or \
-         last_state.beams != state.beams
-
 def translate(name):
   name = name.lower()
   if name == 'screwattack':
@@ -96,31 +90,84 @@ def translate(name):
   else:
     return name
 
-def redraw(timer, grid, state, toilet, image_writer):
-  stuff = [ ]
-  stuff += [ translate(item) for item in state.items ]
-  stuff += [ translate(beam) for beam in state.beams ]
+class UI(object):
+  def __init__(self, screen, layout):
+    self.screen = screen
+    self.layout = layout
 
-  timer.draw(state, toilet)
-  grid.draw(stuff, image_writer)
+    self.sock = NetworkCommandSocket()
+    self.grid = Grid(layout)
+    self.timer = Timer()
+    self.toilet = Toilet(format='utf8', font='future')
+    self.image_writer = KittyImageWriter()
+    self.window = curses.newwin(0, 0, 1, 2)
+    sys.stdout.write("\033[2J")
+    sys.stdout.flush()
+    self.window.clear()
 
-def run(sock, timer, grid, toilet, image_writer):
-  last_state = None
-  while True:
-    state = State.read_from(sock)
-    if need_redraw(last_state, state):
-      redraw(timer, grid, state, toilet, image_writer)
-    last_state = state
-    time.sleep(1)
+  @staticmethod
+  def run(*args, **kwargs):
+    screen = curses.initscr()
+
+    try:
+      # curses.start_color()
+      # curses.use_default_colors()
+      curses.curs_set(0)
+      curses.noecho()
+
+      ui = UI(*args, screen=screen, **kwargs)
+      ui._run()
+
+    finally:
+      curses.endwin()
+
+  def _run(self):
+    self.done = False
+    last_state = None
+    while not self.done:
+      state = State.read_from(self.sock)
+      if self.need_redraw(last_state, state):
+        self.render(state)
+      last_state = state
+      time.sleep(1)
+      self.process_input()
+
+  def process_input(self):
+    self.window.timeout(25)
+    ch = self.window.getch()
+    if ch >= 32 and ch < 128:
+      s = chr(ch)
+    else:
+      s = ch
+    self.handle_input(s)
+
+  def handle_input(self, s):
+    if s == 'q':
+      self.done = True
+
+  def need_redraw(self, last_state, state):
+    # TODO: bosses
+    return last_state is None or \
+           last_state.items != state.items or \
+           last_state.beams != state.beams
+
+  def render(self, state):
+    stuff = [ ]
+    stuff += [ translate(item) for item in state.items ]
+    stuff += [ translate(beam) for beam in state.beams ]
+
+    self.window.move(0, 0)
+
+    self.timer.draw(state, self.window, self.toilet)
+
+    # self.window.noutrefresh()
+    # curses.doupdate()
+    self.window.refresh()
+
+    self.grid.draw(stuff, self.image_writer)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='SM Terminal Tracker')
   args = parser.parse_args()
 
-  sock = NetworkCommandSocket()
-  grid = Grid(layout)
-  timer = Timer()
-  toilet = Toilet(format='utf8', font='future')
-  image_writer = KittyImageWriter()
-
-  run(sock, timer, grid, toilet, image_writer)
+  UI.run(layout=layout)
