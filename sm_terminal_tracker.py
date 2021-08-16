@@ -62,11 +62,31 @@ class Icon(object):
 
 class Grid(object):
   def __init__(self, layout):
+    self.last_state = None
+    self.image = None
     self.rows = [ ]
     for row in layout:
       self.rows.append([ Icon(name) for name in row ])
 
-  def draw(self, stuff, image_writer):
+  @staticmethod
+  def translate(name):
+    name = name.lower()
+    if name == 'screwattack':
+      return 'screw'
+    elif name == 'speedbooster':
+      return 'speed'
+    elif name == 'hijump':
+     return 'hj'
+    elif name == 'gravity':
+      return 'grav'
+    else:
+      return name
+
+  def render_image(self, state):
+    stuff = [ ]
+    stuff += [ self.translate(item) for item in state.items ]
+    stuff += [ self.translate(beam) for beam in state.beams ]
+
     image = Image.new('RGBA', (32*5, 32*4))
     for rowidx, row in enumerate(self.rows):
       for idx, icon in enumerate(row):
@@ -74,21 +94,21 @@ class Grid(object):
         y = rowidx * 32
         image.paste(icon.image if icon.name in stuff else icon.nimage, (x, y))
 
-    image_writer.write(image, file=sys.stdout)
-    sys.stdout.flush()
+    return image
 
-def translate(name):
-  name = name.lower()
-  if name == 'screwattack':
-    return 'screw'
-  elif name == 'speedbooster':
-    return 'speed'
-  elif name == 'hijump':
-   return 'hj'
-  elif name == 'gravity':
-    return 'grav'
-  else:
-    return name
+  def need_render(self, state):
+    # TODO: bosses
+    return self.last_state is None or \
+           self.last_state.items != state.items or \
+           self.last_state.beams != state.beams
+
+  def draw(self, state, image_writer):
+    if self.need_render(state):
+      self.image = self.render_image(state)
+      self.last_state = state
+
+    image_writer.write(self.image, file=sys.stdout)
+    sys.stdout.flush()
 
 class UI(object):
   def __init__(self, screen, layout):
@@ -126,10 +146,8 @@ class UI(object):
     last_state = None
     while not self.done:
       state = State.read_from(self.sock)
-      if self.need_redraw(last_state, state):
-        self.render(state)
+      self.redraw(state)
       last_state = state
-      time.sleep(1)
       self.process_input()
 
   def process_input(self):
@@ -145,16 +163,12 @@ class UI(object):
     if s == 'q':
       self.done = True
 
-  def need_redraw(self, last_state, state):
-    # TODO: bosses
-    return last_state is None or \
-           last_state.items != state.items or \
-           last_state.beams != state.beams
-
-  def render(self, state):
-    stuff = [ ]
-    stuff += [ translate(item) for item in state.items ]
-    stuff += [ translate(beam) for beam in state.beams ]
+  def redraw(self, state):
+    # TODO: Calling clear() like this can IME introduce flicker, but
+    # it's the only way I know of to clear images off the screen in
+    # the version of kitty I am running (the documented escape sequence
+    # for deleting images causes the terminal to hang).
+    self.window.clear()
 
     self.window.move(0, 0)
 
@@ -164,7 +178,7 @@ class UI(object):
     # curses.doupdate()
     self.window.refresh()
 
-    self.grid.draw(stuff, self.image_writer)
+    self.grid.draw(state, self.image_writer)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='SM Terminal Tracker')
