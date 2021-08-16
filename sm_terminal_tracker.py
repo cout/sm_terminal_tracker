@@ -21,18 +21,45 @@ layout = [
   [ 'croc', 'kraid', 'phantoon', 'draygon', 'shaktool' ],
 ]
 
-colors = [
-  [ 40, -1, ], [ 41, -1 ], [ 42, -1 ]
-]
+colors = {
+  'timer': [ [ 40, -1, ], [ 41, -1 ], [ 42, -1 ] ],
+}
+
+class ColorPairs(object):
+  def __init__(self):
+    self.next = 1
+    self.colors = { }
+    self.gradients = { }
+
+  def define(self, name, fg, bg):
+    curses.init_pair(self.next, fg, bg)
+    self.colors[name] = self.next
+    self.next += 1
+
+  def define_gradient(self, name, *pairs):
+    names = [ ]
+    for idx, pair in enumerate(pairs):
+      n = name if idx == 0 else '%s-%s' % (name, idx)
+      self.define(n, *pair)
+      names.append(n)
+    self.gradients[name] = names
+
+  def __getitem__(self, name):
+    return self.colors[name]
+
+  def gradient(self, name):
+    gradient = self.gradients[name]
+    return [ self[name] for name in gradient ]
 
 class Timer(object):
   def __init__(self):
     pass
 
-  def render_timer(self, window, toilet, time, colors, prefix):
+  def render_timer(self, window, toilet, time, color_pairs, prefix):
     lines = toilet.render(time)
+    colors = color_pairs.gradient('timer')
     for idx, line in enumerate(lines):
-      color = colors[idx]
+      color = colors[min(idx, len(colors)-1)]
       color_pair = curses.color_pair(color)
       window.addstr(prefix, color_pair)
       window.addstr(line, color_pair)
@@ -46,9 +73,9 @@ class Timer(object):
     ff = '%02d' % ((secs * 100) // 1 % 100)
     return '%s:%s:%s.%s' % (h, mm, ss, ff)
 
-  def draw(self, state, window, colors, toilet):
-    self.render_timer(window, toilet, " IGT: " + self.s_time(state.igt.to_seconds()), colors, "  ")
-    self.render_timer(window, toilet, " RTA: " + self.s_time(state.rta.to_seconds()), colors, "")
+  def draw(self, state, window, color_pairs, toilet):
+    self.render_timer(window, toilet, " IGT: " + self.s_time(state.igt.to_seconds()), color_pairs, "  ")
+    self.render_timer(window, toilet, " RTA: " + self.s_time(state.rta.to_seconds()), color_pairs, "")
 
 class Icon(object):
   def __init__(self, name):
@@ -128,11 +155,12 @@ class UI(object):
     self.window = curses.newwin(0, 0, 1, 2)
     self.window.clear()
 
-    self.colors = [ ]
-    for idx, fgbg in enumerate(colors):
-      fg, bg = fgbg
-      self.colors.append(idx + 1)
-      curses.init_pair(idx + 1, fg, bg)
+    self.color_pairs = ColorPairs()
+    for name, pairs in colors.items():
+      if type(pairs) == list:
+        self.color_pairs.define_gradient(name, *pairs)
+      else:
+        self.color_pairs.define(name, *pairs)
 
   @staticmethod
   def run(*args, **kwargs):
@@ -181,7 +209,7 @@ class UI(object):
 
     self.window.move(0, 0)
 
-    self.timer.draw(state, self.window, self.colors, self.toilet)
+    self.timer.draw(state, self.window, self.color_pairs, self.toilet)
 
     # self.window.noutrefresh()
     # curses.doupdate()
