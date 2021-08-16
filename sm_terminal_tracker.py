@@ -115,11 +115,11 @@ class Grid(object):
     stuff += [ self.translate(item) for item in state.items ]
     stuff += [ self.translate(beam) for beam in state.beams ]
 
-    image = Image.new('RGBA', (32*5, 32*4))
+    image = Image.new('RGBA', (36*5, 36*4))
     for rowidx, row in enumerate(self.rows):
       for idx, icon in enumerate(row):
-        x = idx * 32
-        y = rowidx * 32
+        x = idx * 36
+        y = rowidx * 36
         image.paste(icon.image if icon.name in stuff else icon.nimage, (x, y))
 
     return image
