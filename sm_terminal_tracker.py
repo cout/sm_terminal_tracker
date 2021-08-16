@@ -21,6 +21,10 @@ layout = [
   [ 'croc', 'kraid', 'phantoon', 'draygon', 'shaktool' ],
 ]
 
+colors = [
+  [ 40, -1, ], [ 41, -1 ], [ 42, -1 ]
+]
+
 class Timer(object):
   def __init__(self):
     pass
@@ -28,12 +32,10 @@ class Timer(object):
   def render_timer(self, window, toilet, time, colors, prefix):
     lines = toilet.render(time)
     for idx, line in enumerate(lines):
-      # color = text_colors[idx] or gradient_colors[-1]
-      # color_pair = Curses.color_pair(color)
-      # window.attron(color_pair) {
-      window.addstr(prefix)
-      window.addstr(line)
-      # }
+      color = colors[idx]
+      color_pair = curses.color_pair(color)
+      window.addstr(prefix, color_pair)
+      window.addstr(line, color_pair)
       window.clrtoeol()
       window.addstr("\n")
 
@@ -44,8 +46,7 @@ class Timer(object):
     ff = '%02d' % ((secs * 100) // 1 % 100)
     return '%s:%s:%s.%s' % (h, mm, ss, ff)
 
-  def draw(self, state, window, toilet):
-    colors = None # TODO
+  def draw(self, state, window, colors, toilet):
     self.render_timer(window, toilet, " IGT: " + self.s_time(state.igt.to_seconds()), colors, "  ")
     self.render_timer(window, toilet, " RTA: " + self.s_time(state.rta.to_seconds()), colors, "")
 
@@ -111,27 +112,35 @@ class Grid(object):
     sys.stdout.flush()
 
 class UI(object):
-  def __init__(self, screen, layout):
+  def __init__(self, screen, layout, colors):
     self.screen = screen
     self.layout = layout
+    self.colors = colors
 
     self.sock = NetworkCommandSocket()
     self.grid = Grid(layout)
     self.timer = Timer()
     self.toilet = Toilet(format='utf8', font='future')
     self.image_writer = KittyImageWriter()
-    self.window = curses.newwin(0, 0, 1, 2)
     sys.stdout.write("\033[2J")
     sys.stdout.flush()
+
+    self.window = curses.newwin(0, 0, 1, 2)
     self.window.clear()
+
+    self.colors = [ ]
+    for idx, fgbg in enumerate(colors):
+      fg, bg = fgbg
+      self.colors.append(idx + 1)
+      curses.init_pair(idx + 1, fg, bg)
 
   @staticmethod
   def run(*args, **kwargs):
     screen = curses.initscr()
 
     try:
-      # curses.start_color()
-      # curses.use_default_colors()
+      curses.start_color()
+      curses.use_default_colors()
       curses.curs_set(0)
       curses.noecho()
 
@@ -172,7 +181,7 @@ class UI(object):
 
     self.window.move(0, 0)
 
-    self.timer.draw(state, self.window, self.toilet)
+    self.timer.draw(state, self.window, self.colors, self.toilet)
 
     # self.window.noutrefresh()
     # curses.doupdate()
@@ -184,4 +193,4 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='SM Terminal Tracker')
   args = parser.parse_args()
 
-  UI.run(layout=layout)
+  UI.run(layout=layout, colors=colors)
