@@ -6,7 +6,7 @@ from state import State
 from image_writers import KittyImageWriter
 from toilet import Toilet
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageEnhance
 
 import argparse
 import time
@@ -83,7 +83,7 @@ class Icon(object):
     self.filename = 'images/%s.png' % name
     if os.path.exists(self.filename):
       self.image = Image.open(self.filename).convert('RGBA')
-      self.nimage = self.image.convert('LA').convert('RGBA')
+      self.nimage = ImageEnhance.Brightness(self.image.convert('LA').convert('RGBA')).enhance(0.5)
     else:
       self.image = Image.new('RGBA', (32,32), (0, 0, 0, 0))
       self.nimage = Image.new('RGBA', (32,32), (0, 0, 0, 0))
