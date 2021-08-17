@@ -147,8 +147,6 @@ class Grid(object):
       return 'speed'
     elif name == 'hijump':
      return 'hj'
-    elif name == 'gravity':
-      return 'grav'
     else:
       return name
 
