@@ -6,6 +6,8 @@ Super Metroid auto-tracker for your terminal window
 This is a simple auto-tracker for super metroid that runs in a terminal
 window.
 
+<img src="screenshots/sm_terminal_tracker.png?raw=true" alt="Image of tracker in action" width="220">
+
 Requirements
 ------------
 
