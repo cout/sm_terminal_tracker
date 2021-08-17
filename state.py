@@ -48,6 +48,21 @@ class Beams(Bitmask):
     if beams & 0x0004: yield 'Spazer'
     if beams & 0x0008: yield 'Plasma'
 
+class Bosses(Bitmask):
+  def __iter__(self):
+    bosses = self.mask
+    #             TTMMWWNNBBCC
+    if bosses & 0x000000000004: yield 'bomb_torizo'
+    if bosses & 0x000000000100: yield 'kraid'
+    if bosses & 0x000000000200: yield 'spore_spawn'
+    if bosses & 0x000000010000: yield 'ridley'
+    if bosses & 0x000000020000: yield 'crocomire'
+    if bosses & 0x000000040000: yield 'golden_torizo'
+    if bosses & 0x000001000000: yield 'phantoon'
+    if bosses & 0x000100000000: yield 'draygon'
+    if bosses & 0x000200000000: yield 'botwoon'
+    if bosses & 0x020000000000: yield 'mother_brain'
+
 class LocationIDs(Bitmask):
   def __iter__(self):
     locations = self.mask
@@ -103,6 +118,7 @@ class State(object):
     rta = FrameCount(rta_frames + (rta_rollovers << 16))
 
     # event_flags = mem.short(0xD821)
+    bosses_bitmask = mem.bignum(0xD828, 7)
     locations = mem.bignum(0xD870, 15)
 
     return State(
@@ -120,5 +136,6 @@ class State(object):
         rta_rollovers=rta_rollovers,
         items=Items(collected_items_bitmask),
         beams=Beams(collected_beams_bitmask),
+        bosses=Bosses(bosses_bitmask),
         locations=LocationIDs(locations),
         )

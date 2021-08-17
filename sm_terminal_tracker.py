@@ -114,6 +114,7 @@ class Grid(object):
     stuff = [ ]
     stuff += [ self.translate(item) for item in state.items ]
     stuff += [ self.translate(beam) for beam in state.beams ]
+    stuff += [ self.translate(boss) for boss in state.bosses ]
 
     image = Image.new('RGBA', (36*5, 36*4))
     for rowidx, row in enumerate(self.rows):
