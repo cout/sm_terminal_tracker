@@ -212,6 +212,8 @@ class UI(object):
 
     self.timer.draw(state, self.window, self.color_pairs, self.toilet)
 
+    self.window.addstr("\n")
+
     # self.window.noutrefresh()
     # curses.doupdate()
     self.window.refresh()
