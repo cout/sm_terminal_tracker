@@ -14,12 +14,46 @@ import os.path
 import sys
 import curses
 
-layout = [
-  [ 'charge', 'ice', 'wave', 'spazer', 'plasma' ],
-  [ 'morph', 'varia', 'springball', 'hj', 'spacejump' ],
-  [ 'bombs', 'gravity', 'ridley', 'speed', 'screw' ],
-  [ 'croc', 'kraid', 'phantoon', 'draygon', 'shaktool' ],
-]
+layouts = {
+  'rumbleminze': [
+    [ 'charge', 'ice', 'wave', 'spazer', 'plasma'        ],
+    [ 'morph', 'varia', 'springball', 'hj', 'spacejump'  ],
+    [ 'bombs', 'gravity', 'ridley', 'speed', 'screw'     ],
+    [ 'croc', 'kraid', 'phantoon', 'draygon', 'shaktool' ],
+  ],
+
+  'tewtal': [
+    [ 'morph', 'bombs', 'springball', 'hj', 'spacejump' ],
+    [ 'charge', 'ice', 'wave', 'spazer', 'plasma'       ],
+    [ 'varia', 'gravity', 'xray', 'grapple', 'screw'    ],
+    [ 'kraid', 'phantoon', 'draygon', 'ridley', 'speed' ],
+  ],
+
+  'saucerelic_tracker': [
+    [ 'ridley', 'charge', 'varia', 'morph', 'hj',        ],
+    [ 'phantoon', 'ice', 'gravity', 'bombs', 'spacejump' ],
+    [ 'kraid', 'wave', '', 'springball', 'speed'         ],
+    [ 'draygon', 'spazer', 'grapple', 'screw'            ],
+    [ '', 'plasma', 'xray', ''                           ],
+  ],
+
+  'saucerelic_broadcast': [
+    [ 'ridley', 'charge', 'varia', 'morph'      ],
+    [ 'phantoon', 'ice', 'gravity', 'bombs'     ],
+    [ 'kraid', 'wave', 'hj', 'springball'       ],
+    [ 'draygon', 'spazer', 'spacejump', 'screw' ],
+    [ '', 'plasma', 'speed', ''                 ],
+  ],
+
+  # only an approximation, since we only support strictly aligned
+  # grids
+  'crossproduct': [
+    [ '', 'charge', 'ice', 'wave', 'spazer', 'plasma'            ],
+    [ '', '', '', 'varia', 'gravity', 'morph',                   ],
+    [ '', 'ridley', '', 'bombs', 'springball', 'screw'           ],
+    [ 'kraid', 'phantoon', 'draygon', 'hj', 'spacejump', 'speed' ],
+  ],
+}
 
 colors = {
   'timer': [ [ 40, -1, ], [ 41, -1 ], [ 42, -1 ] ],
@@ -90,11 +124,19 @@ class Icon(object):
 
 class Grid(object):
   def __init__(self, layout):
+    self.layout = layout
     self.last_state = None
     self.image = None
     self.rows = [ ]
+    self.num_rows = 0
+    self.num_cols = 0
+    self.padding = 4
+    self.icon_width = 32
+    self.icon_height = 32
     for row in layout:
       self.rows.append([ Icon(name) for name in row ])
+      self.num_rows += 1
+      self.num_cols = max(self.num_cols, len(row))
 
   @staticmethod
   def translate(name):
@@ -116,7 +158,9 @@ class Grid(object):
     stuff += [ self.translate(beam) for beam in state.beams ]
     stuff += [ self.translate(boss) for boss in state.bosses ]
 
-    image = Image.new('RGBA', (36*5, 36*4))
+    image = Image.new('RGBA',
+        ((self.icon_width + self.padding) * self.num_cols,
+         (self.icon_height + self.padding) * self.num_rows))
     for rowidx, row in enumerate(self.rows):
       for idx, icon in enumerate(row):
         x = idx * 36
@@ -222,6 +266,7 @@ class UI(object):
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='SM Terminal Tracker')
+  parser.add_argument('--layout', dest='layout', default='tewtal')
   args = parser.parse_args()
 
-  UI.run(layout=layout, colors=colors)
+  UI.run(layout=layouts[args.layout], colors=colors)
