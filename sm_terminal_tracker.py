@@ -125,7 +125,8 @@ class Icon(object):
 class Grid(object):
   def __init__(self, layout):
     self.layout = layout
-    self.last_state = None
+    self.rendered_state = None
+    self.drawn_state = None
     self.image = None
     self.rows = [ ]
     self.num_rows = 0
@@ -167,25 +168,34 @@ class Grid(object):
 
     return image
 
-  def need_render(self, state):
+  @staticmethod
+  def state_changed(old_state, new_state):
     # TODO: bosses
-    return self.last_state is None or \
-           self.last_state.items != state.items or \
-           self.last_state.beams != state.beams
+    return old_state is None or \
+           old_state.items != new_state.items or \
+           old_state.beams != new_state.beams
+
+  def need_render(self, state):
+    return self.state_changed(self.rendered_state, state)
+
+  def need_redraw(self, state):
+    return self.state_changed(self.drawn_state, state)
 
   def draw(self, state, image_writer):
     if self.need_render(state):
       self.image = self.render_image(state)
-      self.last_state = state
+      self.rendered_state = state
 
     image_writer.write(self.image, file=sys.stdout)
     sys.stdout.flush()
+    self.drawn_state = state
 
 class UI(object):
-  def __init__(self, screen, layout, colors):
+  def __init__(self, screen, layout, colors, debug):
     self.screen = screen
     self.layout = layout
     self.colors = colors
+    self.debug = debug
 
     self.sock = NetworkCommandSocket()
     self.grid = Grid(layout)
@@ -248,7 +258,8 @@ class UI(object):
     # it's the only way I know of to clear images off the screen in
     # the version of kitty I am running (the documented escape sequence
     # for deleting images causes the terminal to hang).
-    self.window.clear()
+    if self.grid.need_redraw(state):
+      self.window.clear()
 
     self.window.move(0, 0)
 
@@ -260,11 +271,13 @@ class UI(object):
     # curses.doupdate()
     self.window.refresh()
 
-    self.grid.draw(state, self.image_writer)
+    if self.grid.need_redraw(state):
+      self.grid.draw(state, self.image_writer)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='SM Terminal Tracker')
   parser.add_argument('--layout', dest='layout', default='tewtal')
+  parser.add_argument('--debug', dest='debug', action='store_true')
   args = parser.parse_args()
 
-  UI.run(layout=layouts[args.layout], colors=colors)
+  UI.run(layout=layouts[args.layout], colors=colors, debug=args.debug)
