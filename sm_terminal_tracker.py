@@ -123,8 +123,10 @@ class Icon(object):
       self.nimage = Image.new('RGBA', (32,32), (0, 0, 0, 0))
 
 class Grid(object):
-  def __init__(self, layout):
+  def __init__(self, layout, scale):
     self.layout = layout
+    self.scale = scale
+
     self.rendered_state = None
     self.drawn_state = None
     self.image = None
@@ -168,6 +170,10 @@ class Grid(object):
         y = rowidx * 36
         image.paste(icon.image if icon.name in stuff else icon.nimage, (x, y))
 
+    image = image.resize((
+      int(image.width * self.scale), int(image.height * self.scale)),
+      Image.LANCZOS)
+
     return image
 
   @staticmethod
@@ -193,14 +199,15 @@ class Grid(object):
     self.drawn_state = state
 
 class UI(object):
-  def __init__(self, screen, layout, colors, debug):
+  def __init__(self, screen, layout, colors, debug, scale):
     self.screen = screen
     self.layout = layout
     self.colors = colors
     self.debug = debug
+    self.scale = scale
 
     self.sock = NetworkCommandSocket()
-    self.grid = Grid(layout)
+    self.grid = Grid(layout, scale)
     self.timer = Timer()
     self.toilet = Toilet(format='utf8', font='future')
     self.image_writer = KittyImageWriter()
@@ -280,6 +287,8 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='SM Terminal Tracker')
   parser.add_argument('--layout', dest='layout', default='tewtal')
   parser.add_argument('--debug', dest='debug', action='store_true')
+  parser.add_argument('--scale', dest='scale', default=1.5)
   args = parser.parse_args()
 
-  UI.run(layout=layouts[args.layout], colors=colors, debug=args.debug)
+  UI.run(layout=layouts[args.layout], colors=colors, debug=args.debug,
+      scale=args.scale)
