@@ -181,7 +181,8 @@ class Grid(object):
     # TODO: bosses
     return old_state is None or \
            old_state.items != new_state.items or \
-           old_state.beams != new_state.beams
+           old_state.beams != new_state.beams or \
+           old_state.bosses != new_state.bosses
 
   def need_render(self, state):
     return self.state_changed(self.rendered_state, state)
