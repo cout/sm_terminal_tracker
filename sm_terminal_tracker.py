@@ -172,7 +172,7 @@ class Grid(object):
 
     image = image.resize((
       int(image.width * self.scale), int(image.height * self.scale)),
-      Image.LANCZOS)
+      Image.Resampling.LANCZOS)
 
     return image
 
@@ -239,6 +239,10 @@ class UI(object):
       ui._run()
 
     finally:
+      # TODO: The grid is still visible on the alternate screen when we
+      # exit
+      sys.stdout.write("\033[2J")
+      sys.stdout.flush()
       curses.endwin()
 
   def _run(self):
