@@ -172,7 +172,7 @@ class Grid(object):
 
     image = image.resize((
       int(image.width * self.scale), int(image.height * self.scale)),
-      Image.Resampling.LANCZOS)
+      getattr(Image, 'Resampling', Image).LANCZOS)
 
     return image
 
